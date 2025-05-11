@@ -211,7 +211,7 @@ document.body.appendChild(VRButton.createButton(renderer));
 
 // Add 360° background using a sphere
 const textureLoader = new THREE.TextureLoader();
-textureLoader.load('view-dry-parched-soil-nature.jpg', function(texture) {
+textureLoader.load('360psg.jpg', function(texture) {
   const sphereGeometry = new THREE.SphereGeometry(50, 64, 64);
   const sphereMaterial = new THREE.MeshBasicMaterial({
     map: texture,
