@@ -385,9 +385,9 @@ smokeTypes.forEach(({ color, label, count }) => {
     plane.add(textLabel);
 
     plane.userData = {
-      speedY: 0.04 + Math.random() * 0.02,
+      speedY: 0.02 + Math.random() * 0.02,
       resetY: y,
-      maxY: 5 + Math.random() * 5,
+      maxY: 15 + Math.random() * 5,
       rotationSpeed: 0.002 + Math.random() * 0.004,
     };
 
