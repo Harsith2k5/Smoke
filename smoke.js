@@ -306,7 +306,7 @@ document.body.appendChild(VRButton.createButton(renderer));
 
 // Background
 const textureLoader = new THREE.TextureLoader();
-textureLoader.load('3602.jpg', function (texture) {
+textureLoader.load('36022.jpg', function (texture) {
   const sphereGeometry = new THREE.SphereGeometry(50, 64, 64);
   const sphereMaterial = new THREE.MeshBasicMaterial({
     map: texture,
