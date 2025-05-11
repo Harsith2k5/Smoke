@@ -215,7 +215,7 @@ textureLoader.load('view-dry-parched-soil-nature.jpg', function(texture) {
   const sphereGeometry = new THREE.SphereGeometry(50, 64, 64);
   const sphereMaterial = new THREE.MeshBasicMaterial({
     map: texture,
-    side: THREE.BackSide // Invert the sphere to view from inside
+    side: THREE.BackSide
   });
   const backgroundSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
   scene.add(backgroundSphere);
@@ -226,8 +226,8 @@ const light = new THREE.DirectionalLight(0xffffff, 1);
 light.position.set(0, 1, 1).normalize();
 scene.add(light);
 
-// Create smoke texture
-function createSmokeTexture(color = 'rgba(255, 255, 255, 0.12)') {
+// Create smoke texture (red)
+function createSmokeTexture(color = 'rgba(255, 0, 0, 0.3)') {
   const size = 128;
   const canvas = document.createElement('canvas');
   canvas.width = size;
@@ -250,7 +250,7 @@ const smokeMaterial = new THREE.MeshLambertMaterial({
   transparent: true,
   depthWrite: false,
   side: THREE.DoubleSide,
-  opacity: 0.6
+  opacity: 0.9 // More visible
 });
 
 // Create smoke particles
@@ -265,10 +265,10 @@ for (let i = 0; i < 100; i++) {
   mesh.rotation.z = Math.random() * Math.PI;
 
   mesh.userData = {
-    speedY: 0.02 + Math.random() * 0.01,
+    speedY: 0.05 + Math.random() * 0.03, // Faster vertical movement
     resetY: y,
     maxY: 10 + Math.random() * 5,
-    rotationSpeed: 0.002 + Math.random() * 0.005
+    rotationSpeed: 0.004 + Math.random() * 0.006
   };
 
   scene.add(mesh);
