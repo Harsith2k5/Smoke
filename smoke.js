@@ -221,7 +221,7 @@ document.body.appendChild(VRButton.createButton(renderer));
 
 // 🔥 Background HDRI setup (Industrial Sunset)
 const hdrLoader = new RGBELoader();
-hdrLoader.load('path_to_your_hdr_image/industrial_sunset.hdr', (texture) => {
+hdrLoader.load('industrial_sunset_4k.hdr', (texture) => {
   texture.mapping = THREE.EquirectangularReflectionMapping;
   scene.background = texture;
   scene.environment = texture;
