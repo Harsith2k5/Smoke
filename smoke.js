@@ -495,7 +495,7 @@ function createInfoLabel(text) {
 const particles = [];
 const NO2_COLOR = 'rgba(0, 255, 0, 0.25)';
 const NO2_LABEL = 'NO₂';
-const NO2_COUNT = 30;
+const NO2_COUNT = 100;
 
 const texture = createSmokeTexture(NO2_COLOR);
 const material = new THREE.MeshLambertMaterial({
