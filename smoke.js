@@ -291,7 +291,7 @@ renderer.setAnimationLoop(() => {
   renderer.render(scene, camera);
 });
  */
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.156.1/build/three.module.js';
+/* import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.156.1/build/three.module.js';
 import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.156.1/examples/jsm/webxr/VRButton.js';
 
 const scene = new THREE.Scene();
@@ -395,6 +395,144 @@ smokeTypes.forEach(({ color, label, count }) => {
     particles.push(plane);
   }
 });
+
+// Animate
+renderer.setAnimationLoop(() => {
+  particles.forEach(p => {
+    p.rotation.z += p.userData.rotationSpeed;
+    p.position.y += p.userData.speedY;
+    if (p.position.y > p.userData.maxY) {
+      p.position.y = p.userData.resetY - 5;
+      p.position.x = Math.random() * 20 - 10;
+      p.position.z = Math.random() * 20 - 10;
+    }
+  });
+
+  renderer.render(scene, camera);
+}); */
+
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.156.1/build/three.module.js';
+import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.156.1/examples/jsm/webxr/VRButton.js';
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.z = 5;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.xr.enabled = true;
+document.body.appendChild(renderer.domElement);
+document.body.appendChild(VRButton.createButton(renderer));
+
+// Background
+const textureLoader = new THREE.TextureLoader();
+textureLoader.load('streetview (1).jpg', function (texture) {
+  const sphereGeometry = new THREE.SphereGeometry(50, 64, 64);
+  const sphereMaterial = new THREE.MeshBasicMaterial({
+    map: texture,
+    side: THREE.BackSide,
+  });
+  const backgroundSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+  scene.add(backgroundSphere);
+});
+
+// Light
+const light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(0, 1, 1).normalize();
+scene.add(light);
+
+// Create smoke texture
+function createSmokeTexture(color = 'rgba(0, 255, 0, 0.25)') {
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const gradient = ctx.createRadialGradient(size / 2, size / 2, 10, size / 2, size / 2, size / 2);
+  gradient.addColorStop(0, color);
+  gradient.addColorStop(1, 'transparent');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+  return new THREE.CanvasTexture(canvas);
+}
+
+// Label for particles
+function createLabel(text) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = 'white';
+  ctx.font = 'bold 28px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(text, canvas.width / 2, canvas.height / 2 + 10);
+  const texture = new THREE.CanvasTexture(canvas);
+  const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(2, 1, 1);
+  return sprite;
+}
+
+// Label for pollution info (temp, wind, AQI)
+function createInfoLabel(text) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#D8BFD8'; // light purple
+  ctx.font = 'bold 32px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+  const texture = new THREE.CanvasTexture(canvas);
+  const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(10, 5, 1);
+  sprite.position.set(0, 5, -5);
+  return sprite;
+}
+
+// Show only NO₂ particles
+const particles = [];
+const NO2_COLOR = 'rgba(0, 255, 0, 0.25)';
+const NO2_LABEL = 'NO₂';
+const NO2_COUNT = 30;
+
+const texture = createSmokeTexture(NO2_COLOR);
+const material = new THREE.MeshLambertMaterial({
+  map: texture,
+  transparent: true,
+  depthWrite: false,
+  side: THREE.DoubleSide,
+  opacity: 0.8,
+});
+
+for (let i = 0; i < NO2_COUNT; i++) {
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), material);
+  const x = Math.random() * 20 - 10;
+  const y = Math.random() * 10 - 10;
+  const z = Math.random() * 20 - 10;
+  plane.position.set(x, y, z);
+  plane.rotation.z = Math.random() * Math.PI;
+
+  const textLabel = createLabel(NO2_LABEL);
+  textLabel.position.set(0, 0, 0.1); // just above the plane
+  plane.add(textLabel);
+
+  plane.userData = {
+    speedY: 0.02 + Math.random() * 0.02,
+    resetY: y,
+    maxY: 15 + Math.random() * 5,
+    rotationSpeed: 0.002 + Math.random() * 0.004,
+  };
+
+  scene.add(plane);
+  particles.push(plane);
+}
+
+// Add pollution info panel
+const infoText = "Temp: 32.38°C  |  Wind: 2.22 m/s  |  AQI: 500";
+const infoLabel = createInfoLabel(infoText);
+scene.add(infoLabel);
 
 // Animate
 renderer.setAnimationLoop(() => {
