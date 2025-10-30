@@ -36,6 +36,7 @@
     <script type="module">
       import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.156.1/build/three.module.js';
       import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.156.1/examples/jsm/webxr/VRButton.js';
+      import { XRHandModelFactory } from 'https://cdn.jsdelivr.net/npm/three@0.156.1/examples/jsm/webxr/XRHandModelFactory.js';
       import { XRControllerModelFactory } from 'https://cdn.jsdelivr.net/npm/three@0.156.1/examples/jsm/webxr/XRControllerModelFactory.js';
 
       // === SCENE SETUP ===
@@ -104,7 +105,6 @@
         scene.add(infoSprite);
       }
 
-      // === SPEECH FEEDBACK ===
       function speak(text) {
         if ('speechSynthesis' in window) {
           const msg = new SpeechSynthesisUtterance(text);
@@ -132,7 +132,6 @@
         buttons.push(btn);
       }
 
-      // === ACTIONS ===
       function startDrill() {
         updateInfo("🚨 Drill Started!", "#ffcc00");
         beacon.material.color.set(0xffcc00);
@@ -156,51 +155,50 @@
       createButton("🚁 Evacuate", 0xff4444, 0.8, startEvacuation);
       createButton("🔄 Reset", 0x00ff77, -0.4, resetSim);
 
-      // === VR CONTROLLERS ===
+      // === RAYCASTING + INTERACTION ===
+      const raycaster = new THREE.Raycaster();
+
+      // === HAND CONTROLLER SETUP ===
       const controller1 = renderer.xr.getController(0);
       const controller2 = renderer.xr.getController(1);
       scene.add(controller1);
       scene.add(controller2);
 
-      function makeRay(color = 0x00ffff) {
-        const geometry = new THREE.BufferGeometry().setFromPoints([
-          new THREE.Vector3(0, 0, 0),
-          new THREE.Vector3(0, 0, -1)
-        ]);
-        const material = new THREE.LineBasicMaterial({ color });
-        return new THREE.Line(geometry, material);
-      }
-
-      controller1.add(makeRay());
-      controller2.add(makeRay());
-
       const controllerModelFactory = new XRControllerModelFactory();
-      const grip1 = renderer.xr.getControllerGrip(0);
-      grip1.add(controllerModelFactory.createControllerModel(grip1));
-      scene.add(grip1);
+      const handModelFactory = new XRHandModelFactory();
 
-      const grip2 = renderer.xr.getControllerGrip(1);
-      grip2.add(controllerModelFactory.createControllerModel(grip2));
-      scene.add(grip2);
+      const hand1 = renderer.xr.getHand(0);
+      const hand2 = renderer.xr.getHand(1);
+      hand1.add(handModelFactory.createHandModel(hand1));
+      hand2.add(handModelFactory.createHandModel(hand2));
+      scene.add(hand1);
+      scene.add(hand2);
 
-      function onSelectStart(event) {
-        const controller = event.target;
-        const tempMatrix = new THREE.Matrix4();
-        tempMatrix.identity().extractRotation(controller.matrixWorld);
+      // === PINCH DETECTION ===
+      function setupPinch(hand) {
+        const indexTip = 8;
+        const thumbTip = 4;
+        let wasPinched = false;
 
-        const raycaster = new THREE.Raycaster();
-        raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
-        raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+        hand.addEventListener('frame', () => {
+          const index = hand.joints[`index-finger-tip`];
+          const thumb = hand.joints[`thumb-tip`];
+          if (index && thumb) {
+            const dist = index.position.distanceTo(thumb.position);
+            const isPinched = dist < 0.02;
 
-        const intersects = raycaster.intersectObjects(buttons);
-        if (intersects.length > 0) {
-          const hit = intersects[0].object;
-          hit.userData.action();
-        }
+            if (isPinched && !wasPinched) {
+              raycaster.setFromXRHand(hand);
+              const intersects = raycaster.intersectObjects(buttons);
+              if (intersects.length > 0) intersects[0].object.userData.action();
+            }
+            wasPinched = isPinched;
+          }
+        });
       }
 
-      controller1.addEventListener('selectstart', onSelectStart);
-      controller2.addEventListener('selectstart', onSelectStart);
+      setupPinch(hand1);
+      setupPinch(hand2);
 
       // === SENSOR SIMULATION ===
       function simulateSensors() {
@@ -208,7 +206,6 @@
         const temp = (Math.random() * 10 + 25).toFixed(1);
         const humidity = (Math.random() * 20 + 60).toFixed(1);
         const status = distance < 10 ? "DANGER" : distance < 20 ? "WARNING" : "SAFE";
-
         const height = THREE.MathUtils.mapLinear(distance, 5, 30, 5, -5);
         water.position.y = height;
 
@@ -227,14 +224,11 @@
       simulateSensors();
 
       // === ANIMATION LOOP ===
-      function animate() {
-        renderer.setAnimationLoop(() => {
-          water.material.opacity = 0.4 + 0.05 * Math.sin(Date.now() * 0.002);
-          beacon.scale.setScalar(1 + 0.1 * Math.sin(Date.now() * 0.005));
-          renderer.render(scene, camera);
-        });
-      }
-      animate();
+      renderer.setAnimationLoop(() => {
+        water.material.opacity = 0.4 + 0.05 * Math.sin(Date.now() * 0.002);
+        beacon.scale.setScalar(1 + 0.1 * Math.sin(Date.now() * 0.005));
+        renderer.render(scene, camera);
+      });
 
       // === RESIZE ===
       window.addEventListener('resize', () => {
