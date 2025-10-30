@@ -31,40 +31,44 @@
     <a-scene>
       <a-sky color="#001a33"></a-sky>
 
-      <!-- 🌊 Dynamic Flood Water -->
-      <a-plane id="water" color="#004488" width="100" height="100" rotation="-90 0 0" position="0 0 0">
+      <!-- 🌊 Flood Water -->
+      <a-plane id="water" color="#004488" width="100" height="100"
+               rotation="-90 0 0" position="0 0 0">
         <a-animation attribute="position" direction="alternate" dur="4000"
                      repeat="indefinite" to="0 0.3 0"></a-animation>
       </a-plane>
 
-      <!-- 📊 Sensor Panel -->
-      <a-entity id="data-panel" position="0 2 -3">
-        <a-plane color="#002244" width="3.8" height="2" opacity="0.8"></a-plane>
-        <a-text id="rain" value="🌧 Rainfall: -- mm" color="#00eaff" position="-1.5 0.6 0" align="left"></a-text>
-        <a-text id="river" value="🌊 River: -- m" color="#00ffaa" position="-1.5 0.2 0" align="left"></a-text>
-        <a-text id="temp" value="🌡 Temp: -- °C" color="#ffaa00" position="-1.5 -0.2 0" align="left"></a-text>
-        <a-text id="humidity" value="💧 Humidity: -- %" color="#66ff66" position="-1.5 -0.6 0" align="left"></a-text>
+      <!-- 👁️ Camera rig with fixed UI (so it stays visible in VR) -->
+      <a-entity id="rig" position="0 1.6 0">
+        <a-entity id="camera" camera look-controls wasd-controls="enabled: false"></a-entity>
+
+        <!-- 🎛️ HUD UI (attached to camera rig) -->
+        <a-entity id="ui" position="0 0 -3.5" scale="1.2 1.2 1.2">
+          <!-- 📊 Sensor Panel -->
+          <a-entity id="data-panel" position="0 1 0">
+            <a-plane color="#002244" width="3.8" height="2" opacity="0.8"></a-plane>
+            <a-text id="rain" value="🌧 Rainfall: -- mm" color="#00eaff" position="-1.5 0.6 0" align="left"></a-text>
+            <a-text id="river" value="🌊 River: -- m" color="#00ffaa" position="-1.5 0.2 0" align="left"></a-text>
+            <a-text id="temp" value="🌡 Temp: -- °C" color="#ffaa00" position="-1.5 -0.2 0" align="left"></a-text>
+            <a-text id="humidity" value="💧 Humidity: -- %" color="#66ff66" position="-1.5 -0.6 0" align="left"></a-text>
+          </a-entity>
+
+          <!-- 🚨 Alert -->
+          <a-text id="alert" value="" color="#ff4444" position="0 2.4 0" align="center" scale="2 2 2"></a-text>
+
+          <!-- 🧠 Quiz Panel -->
+          <a-entity id="quiz-panel" position="0 -1.2 0" visible="false">
+            <a-plane id="quiz-bg" color="#002244" width="4" height="2.5" opacity="0.85"></a-plane>
+            <a-text id="question" value="" color="#ffffff" position="0 0.8 0" align="center" width="3.5"></a-text>
+
+            <a-text id="opt1" value="" color="#00ffff" position="0 0.4 0" align="center"></a-text>
+            <a-text id="opt2" value="" color="#00ffff" position="0 0.1 0" align="center"></a-text>
+            <a-text id="opt3" value="" color="#00ffff" position="0 -0.2 0" align="center"></a-text>
+            <a-text id="opt4" value="" color="#00ffff" position="0 -0.5 0" align="center"></a-text>
+            <a-text id="timer" value="" color="#ffaa00" position="0 -1 0" align="center"></a-text>
+          </a-entity>
+        </a-entity>
       </a-entity>
-
-      <!-- 🚨 Alert -->
-      <a-text id="alert" value="" color="#ff4444" position="0 3 -2" align="center" scale="2 2 2"></a-text>
-
-      <!-- 🧠 Quiz Panel -->
-      <a-entity id="quiz-panel" position="0 1.5 -2" visible="false">
-        <a-plane id="quiz-bg" color="#002244" width="4" height="2.5" opacity="0.85"></a-plane>
-        <a-text id="question" value="" color="#ffffff" position="0 0.8 0" align="center" width="3.5"></a-text>
-
-        <!-- Options -->
-        <a-text id="opt1" value="" color="#00ffff" position="0 0.4 0" align="center"></a-text>
-        <a-text id="opt2" value="" color="#00ffff" position="0 0.1 0" align="center"></a-text>
-        <a-text id="opt3" value="" color="#00ffff" position="0 -0.2 0" align="center"></a-text>
-        <a-text id="opt4" value="" color="#00ffff" position="0 -0.5 0" align="center"></a-text>
-
-        <a-text id="timer" value="" color="#ffaa00" position="0 -1 0" align="center"></a-text>
-      </a-entity>
-
-      <!-- 👁️ Camera -->
-      <a-entity camera look-controls position="0 1.6 0"></a-entity>
     </a-scene>
 
     <script>
@@ -72,31 +76,11 @@
       const WEATHER_API = "https://api.open-meteo.com/v1/forecast?latitude=13.0827&longitude=80.2707&current_weather=true&hourly=precipitation";
 
       const questions = [
-        {
-          q: "Water levels are rising and live wires are visible. What should you do?",
-          opts: ["Move to higher ground", "Touch the wires", "Wait in water", "Swim towards lines"],
-          ans: 0
-        },
-        {
-          q: "A person is stranded on a floating car. What’s your first action?",
-          opts: ["Mark location & call help", "Jump into water", "Throw rope", "Wait till car sinks"],
-          ans: 0
-        },
-        {
-          q: "Which is safest shelter during heavy floods?",
-          opts: ["Lowland", "Rooftop of tall building", "Open field", "River bank"],
-          ans: 1
-        },
-        {
-          q: "Before using a rescue boat, what’s crucial?",
-          opts: ["Check fuel", "Wear life jacket", "Play siren", "Wave hands"],
-          ans: 1
-        },
-        {
-          q: "If communication fails, what should you do?",
-          opts: ["Panic", "Use visual signals", "Wait silently", "Abandon rescue"],
-          ans: 1
-        }
+        { q: "Water levels are rising and live wires are visible. What should you do?", opts: ["Move to higher ground", "Touch the wires", "Wait in water", "Swim towards lines"], ans: 0 },
+        { q: "A person is stranded on a floating car. What’s your first action?", opts: ["Mark location & call help", "Jump into water", "Throw rope", "Wait till car sinks"], ans: 0 },
+        { q: "Which is safest shelter during heavy floods?", opts: ["Lowland", "Rooftop of tall building", "Open field", "River bank"], ans: 1 },
+        { q: "Before using a rescue boat, what’s crucial?", opts: ["Check fuel", "Wear life jacket", "Play siren", "Wave hands"], ans: 1 },
+        { q: "If communication fails, what should you do?", opts: ["Panic", "Use visual signals", "Wait silently", "Abandon rescue"], ans: 1 }
       ];
 
       async function fetchFloodData() {
@@ -141,41 +125,36 @@
       }
 
       async function aiNarrate(data) {
-        const prompt = `
-        Flood data:
+        const prompt = `Flood data:
         Rainfall: ${data.rain} mm,
         River: ${data.river} m,
         Humidity: ${data.humidity}%,
         Temperature: ${data.temp}°C.
-        Give a short 2-line calm instruction for rescuers in flood zones.
-        `;
-        const response = await fetch(
+        Give a short 2-line calm instruction for rescuers in flood zones.`;
+
+        const res = await fetch(
           "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + GEMINI_API_KEY,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-          }
+          { method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
         );
 
-        const json = await response.json();
-        const text = json?.candidates?.[0]?.content?.parts?.[0]?.text ||
-          "Stay alert. Move to higher ground. Prioritize safety and communication.";
+        const j = await res.json();
+        const text = j?.candidates?.[0]?.content?.parts?.[0]?.text ||
+          "Stay alert. Move to higher ground. Prioritize safety.";
 
         const aiText = document.createElement("a-text");
         aiText.setAttribute("value", `🤖 ${text}`);
         aiText.setAttribute("color", "#00ffff");
-        aiText.setAttribute("position", "0 0.5 -2.5");
+        aiText.setAttribute("position", "0 0 -2");
         aiText.setAttribute("align", "center");
         aiText.setAttribute("scale", "1.2 1.2 1.2");
-        document.querySelector("a-scene").appendChild(aiText);
+        document.getElementById("ui").appendChild(aiText);
 
         const utter = new SpeechSynthesisUtterance(text);
-        utter.rate = 1; utter.pitch = 1; utter.volume = 1;
         speechSynthesis.speak(utter);
       }
 
-      // 🧩 Interactive Quiz
+      // 🧩 Quiz
       let currentQ = 0;
       let timer;
 
@@ -205,13 +184,13 @@
           el.setAttribute("color", "#00ffff");
         });
 
-        let timeLeft = 10;
-        document.getElementById("timer").setAttribute("value", `⏳ ${timeLeft}s`);
+        let t = 10;
+        document.getElementById("timer").setAttribute("value", `⏳ ${t}s`);
         clearInterval(timer);
         timer = setInterval(() => {
-          timeLeft--;
-          document.getElementById("timer").setAttribute("value", `⏳ ${timeLeft}s`);
-          if (timeLeft === 0) {
+          t--;
+          document.getElementById("timer").setAttribute("value", `⏳ ${t}s`);
+          if (t === 0) {
             clearInterval(timer);
             showAnswer(i);
           }
@@ -220,15 +199,9 @@
 
       function showAnswer(i) {
         const correct = questions[i].ans + 1;
-        const correctEl = document.getElementById(`opt${correct}`);
-        correctEl.setAttribute("color", "#00ff00");
-
-        const timerText = document.getElementById("timer");
-        timerText.setAttribute("value", "✅ Correct: " + questions[i].opts[questions[i].ans]);
-
-        setTimeout(() => {
-          nextQuestion();
-        }, 4000); // Pause before next question
+        document.getElementById(`opt${correct}`).setAttribute("color", "#00ff00");
+        document.getElementById("timer").setAttribute("value", "✅ Correct: " + questions[i].opts[questions[i].ans]);
+        setTimeout(() => nextQuestion(), 4000);
       }
 
       function nextQuestion() {
@@ -241,12 +214,11 @@
           const done = document.createElement("a-text");
           done.setAttribute("value", "🎉 Training Complete! Excellent Work Rescuer!");
           done.setAttribute("color", "#00ffcc");
-          done.setAttribute("position", "0 2 -2");
+          done.setAttribute("position", "0 1 0");
           done.setAttribute("align", "center");
           done.setAttribute("scale", "1.5 1.5 1.5");
-          document.querySelector("a-scene").appendChild(done);
-          const utter = new SpeechSynthesisUtterance("Training complete! Excellent work, Rescuer!");
-          speechSynthesis.speak(utter);
+          document.getElementById("ui").appendChild(done);
+          speechSynthesis.speak(new SpeechSynthesisUtterance("Training complete! Excellent work, Rescuer!"));
         }
       }
 
