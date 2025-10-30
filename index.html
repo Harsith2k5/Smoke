@@ -1,15 +1,212 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VR Flood Rescue Guide</title>
-  <style>
-    body { margin: 0; overflow: hidden; background: #000; }
-    canvas { display: block; }
-  </style>
-</head>
-<body>
-  <script type="module" src="./floodGuide.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <title>🌊 Flood Rescue VR Training</title>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        font-family: 'Segoe UI', sans-serif;
+        background: radial-gradient(circle at center, #001122, #000);
+      }
+      canvas { display: block; }
+      #overlay {
+        position: absolute;
+        top: 20px;
+        width: 100%;
+        text-align: center;
+        color: #00fff7;
+        font-size: 24px;
+        font-weight: bold;
+        text-shadow: 0 0 20px #00e6ff;
+        z-index: 10;
+        letter-spacing: 1px;
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="overlay">🚨 Flood Rescue VR Training Simulator 🚨</div>
+
+    <script type="module">
+      import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.156.1/build/three.module.js';
+      import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.156.1/examples/jsm/webxr/VRButton.js';
+
+      // === SCENE SETUP ===
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.set(0, 2, 5);
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.xr.enabled = true;
+      renderer.setClearColor(0x001122);
+      document.body.appendChild(renderer.domElement);
+      document.body.appendChild(VRButton.createButton(renderer));
+
+      // === LIGHTS ===
+      const hemiLight = new THREE.HemisphereLight(0x00ffff, 0x000022, 1.2);
+      scene.add(hemiLight);
+      const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      dirLight.position.set(5, 10, 7);
+      scene.add(dirLight);
+
+      // === WATER PLANE ===
+      const waterGeo = new THREE.PlaneGeometry(100, 100);
+      const waterMat = new THREE.MeshPhongMaterial({
+        color: 0x0077ff,
+        transparent: true,
+        opacity: 0.5,
+        shininess: 120
+      });
+      const water = new THREE.Mesh(waterGeo, waterMat);
+      water.rotation.x = -Math.PI / 2;
+      water.position.y = -5;
+      scene.add(water);
+
+      // === BEACON ===
+      const beacon = new THREE.Mesh(
+        new THREE.SphereGeometry(0.5, 32, 32),
+        new THREE.MeshBasicMaterial({ color: 0x00ff88 })
+      );
+      beacon.position.set(0, 1, -3);
+      scene.add(beacon);
+
+      // === INFO PANEL ===
+      function createTextCanvas(text, color = '#fff') {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1024; canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = color;
+        ctx.font = 'bold 64px Segoe UI';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+        return new THREE.CanvasTexture(canvas);
+      }
+
+      let infoSprite;
+      function updateInfo(text, color) {
+        if (infoSprite) scene.remove(infoSprite);
+        const tex = createTextCanvas(text, color);
+        const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+        infoSprite = new THREE.Sprite(mat);
+        infoSprite.scale.set(10, 3, 1);
+        infoSprite.position.set(0, 4, -6);
+        scene.add(infoSprite);
+      }
+
+      // === SPEECH FEEDBACK ===
+      function speak(text) {
+        if ('speechSynthesis' in window) {
+          const msg = new SpeechSynthesisUtterance(text);
+          msg.rate = 1.0; msg.pitch = 1.1;
+          speechSynthesis.speak(msg);
+        }
+      }
+
+      // === BUTTON CREATION ===
+      const buttons = [];
+      function createButton(label, color, posY, action) {
+        const geo = new THREE.BoxGeometry(2, 0.8, 0.3);
+        const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.5 });
+        const btn = new THREE.Mesh(geo, mat);
+
+        const tex = createTextCanvas(label, '#000');
+        const textMat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
+        const textPlane = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.6), textMat);
+        textPlane.position.z = 0.16;
+        btn.add(textPlane);
+
+        btn.position.set(-2.5, posY, -4);
+        btn.userData.action = action;
+        scene.add(btn);
+        buttons.push(btn);
+      }
+
+      // === ACTIONS ===
+      function startDrill() {
+        updateInfo("🚨 Drill Started!", "#ffcc00");
+        beacon.material.color.set(0xffcc00);
+        speak("Rescue drill initiated. Evaluate flood level and assist victims.");
+      }
+
+      function startEvacuation() {
+        updateInfo("🚁 Evacuation Mode!", "#ff4444");
+        beacon.material.color.set(0xff0000);
+        speak("Begin evacuation immediately. Prioritize safety and order.");
+      }
+
+      function resetSim() {
+        updateInfo("✅ Simulation Reset", "#00ff88");
+        beacon.material.color.set(0x00ff88);
+        water.position.y = -5;
+        speak("Simulation reset. Ready for the next operation.");
+      }
+
+      createButton("🚨 Start Drill", 0xffcc00, 2, startDrill);
+      createButton("🚁 Evacuate", 0xff4444, 0.8, startEvacuation);
+      createButton("🔄 Reset", 0x00ff77, -0.4, resetSim);
+
+      // === INTERACTION ===
+      const raycaster = new THREE.Raycaster();
+      const pointer = new THREE.Vector2();
+      function onClick(e) {
+        pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+        pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        raycaster.setFromCamera(pointer, camera);
+        const hits = raycaster.intersectObjects(buttons);
+        if (hits.length > 0) hits[0].object.userData.action();
+      }
+      window.addEventListener('click', onClick);
+
+      // === SENSOR SIMULATION ===
+      function simulateSensors() {
+        const distance = Math.random() * 25 + 5;
+        const temp = (Math.random() * 10 + 25).toFixed(1);
+        const humidity = (Math.random() * 20 + 60).toFixed(1);
+        const status = distance < 10 ? "DANGER" : distance < 20 ? "WARNING" : "SAFE";
+
+        const height = THREE.MathUtils.mapLinear(distance, 5, 30, 5, -5);
+        water.position.y = height;
+
+        if (status === "DANGER") {
+          updateInfo(`🚨 DANGER!\nWater: ${distance.toFixed(1)}cm\nTemp: ${temp}°C`, "#ff0000");
+          beacon.material.color.set(0xff0000);
+        } else if (status === "WARNING") {
+          updateInfo(`⚠️ Warning!\nWater: ${distance.toFixed(1)}cm`, "#ffcc00");
+          beacon.material.color.set(0xffcc00);
+        } else {
+          updateInfo(`✅ Safe Level: ${distance.toFixed(1)}cm`, "#00ff88");
+          beacon.material.color.set(0x00ff88);
+        }
+      }
+      setInterval(simulateSensors, 4000);
+      simulateSensors();
+
+      // === ANIMATION LOOP ===
+      function animate() {
+        renderer.setAnimationLoop(() => {
+          water.material.opacity = 0.4 + 0.05 * Math.sin(Date.now() * 0.002);
+          beacon.scale.setScalar(1 + 0.1 * Math.sin(Date.now() * 0.005));
+          renderer.render(scene, camera);
+        });
+      }
+      animate();
+
+      // === RESIZE ===
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+    </script>
+  </body>
 </html>
