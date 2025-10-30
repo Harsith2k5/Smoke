@@ -1,181 +1,256 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <meta charset="utf-8">
-    <title>Zyntra's ResQNet VR Command Center</title>
+    <meta charset="utf-8" />
+    <title>FloodResQ VR • Zyntra’s ResQNet</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <style>
       body { margin: 0; overflow: hidden; background: #000; }
-      .a-enter-vr-button { background: #007bff !important; border-radius: 10px; font-weight: bold; }
+      .a-enter-vr-button {
+        background: linear-gradient(90deg, #00eaff, #00ffaa) !important;
+        color: #000 !important;
+        border-radius: 14px !important;
+        font-weight: bold !important;
+        font-size: 16px !important;
+        box-shadow: 0 0 10px #00ffff;
+      }
+      #loader {
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        color: #00ffff;
+        font-size: 22px;
+        text-shadow: 0 0 10px #00eaff;
+      }
     </style>
   </head>
 
   <body>
-    <a-scene background="color: #001018">
-      <!-- 🌌 Sky + Water -->
-      <a-sky color="#00081a"></a-sky>
-      <a-plane id="water" color="#002244" width="60" height="60" rotation="-90 0 0" position="0 0 0"></a-plane>
+    <div id="loader">🌊 Initializing Zyntra’s ResQNet...</div>
 
-      <!-- 🧭 Title -->
-      <a-text value="🌐 Zyntra's ResQNet Command Center" position="0 3 -2" color="#00ffff" align="center" scale="2 2 2"></a-text>
+    <a-scene>
+      <a-sky color="#001a33"></a-sky>
 
-      <!-- 📊 Front block -->
-      <a-entity id="block-front" position="0 1.6 -3">
-        <a-plane color="#001f33" width="2.8" height="1.5" opacity="0.7"></a-plane>
-        <a-text id="distance" value="📏 Distance: -- cm" color="#00eaff" position="-1.2 0.5 0.01"></a-text>
-        <a-text id="temp" value="🌡 Temp: -- °C" color="#ffaa00" position="-1.2 0.2 0.01"></a-text>
-        <a-text id="humidity" value="💧 Humidity: -- %" color="#66ff66" position="-1.2 -0.1 0.01"></a-text>
-        <a-text id="air" value="🌫 AQI: --" color="#ff66cc" position="-1.2 -0.4 0.01"></a-text>
-      </a-entity>
+      <!-- 🌊 Dynamic Flood Water -->
+      <a-plane id="water" color="#004488" width="100" height="100" rotation="-90 0 0" position="0 0 0">
+        <a-animation attribute="position" direction="alternate" dur="4000"
+                     repeat="indefinite" to="0 0.3 0"></a-animation>
+      </a-plane>
 
-      <!-- 🤖 AI Block (Right side) -->
-      <a-entity id="ai-block" position="3 1.6 0" rotation="0 -90 0">
-        <a-plane color="#112244" width="2.6" height="1.1" opacity="0.8"></a-plane>
-        <a-text value="🤖 AI Guidance" color="#00ffcc" position="-1.1 0.35 0.01" align="left"></a-text>
-        <a-text id="ai-suggestion" value="Awaiting analysis..." color="#ffffff" position="-1.1 0 0.01" wrap-count="42" align="left"></a-text>
-      </a-entity>
-
-      <!-- ☁️ Weather (Left side) -->
-      <a-entity id="weather-block" position="-3 1.6 0" rotation="0 90 0">
-        <a-plane color="#222244" width="2.6" height="1.1" opacity="0.8"></a-plane>
-        <a-text value="☁️ Environment" color="#77aaff" position="-1.1 0.35 0.01" align="left"></a-text>
-        <a-text id="weather-data" value="Loading..." color="#ffffff" position="-1.1 0 0.01" wrap-count="42" align="left"></a-text>
-      </a-entity>
-
-      <!-- 🧠 System Log (Back) -->
-      <a-entity id="system-block" position="0 1.6 3" rotation="0 180 0">
-        <a-plane color="#331144" width="2.6" height="1.1" opacity="0.8"></a-plane>
-        <a-text value="🧠 System Log" color="#cc66ff" position="-1.1 0.35 0.01" align="left"></a-text>
-        <a-text id="system-log" value="Initializing systems..." color="#ffffff" position="-1.1 0 0.01" wrap-count="42" align="left"></a-text>
+      <!-- 📊 Sensor Panel -->
+      <a-entity id="data-panel" position="0 2 -3">
+        <a-plane color="#002244" width="3.8" height="2" opacity="0.8"></a-plane>
+        <a-text id="rain" value="🌧 Rainfall: -- mm" color="#00eaff" position="-1.5 0.6 0" align="left"></a-text>
+        <a-text id="river" value="🌊 River: -- m" color="#00ffaa" position="-1.5 0.2 0" align="left"></a-text>
+        <a-text id="temp" value="🌡 Temp: -- °C" color="#ffaa00" position="-1.5 -0.2 0" align="left"></a-text>
+        <a-text id="humidity" value="💧 Humidity: -- %" color="#66ff66" position="-1.5 -0.6 0" align="left"></a-text>
       </a-entity>
 
       <!-- 🚨 Alert -->
-      <a-text id="alert" value="" color="#ff0000" position="0 2.6 -2" align="center" scale="2 2 2"></a-text>
+      <a-text id="alert" value="" color="#ff4444" position="0 3 -2" align="center" scale="2 2 2"></a-text>
 
-      <!-- 🔊 Flood Sound -->
-      <a-sound id="alertSound"
-        src="https://cdn.pixabay.com/download/audio/2021/08/04/audio_69b624fd7a.mp3?filename=alarm-6004.mp3"
-        autoplay="false">
-      </a-sound>
+      <!-- 🧠 Quiz Panel -->
+      <a-entity id="quiz-panel" position="0 1.5 -2" visible="false">
+        <a-plane id="quiz-bg" color="#002244" width="4" height="2.5" opacity="0.85"></a-plane>
+        <a-text id="question" value="" color="#ffffff" position="0 0.8 0" align="center" width="3.5"></a-text>
+
+        <!-- Options -->
+        <a-text id="opt1" value="" color="#00ffff" position="0 0.4 0" align="center"></a-text>
+        <a-text id="opt2" value="" color="#00ffff" position="0 0.1 0" align="center"></a-text>
+        <a-text id="opt3" value="" color="#00ffff" position="0 -0.2 0" align="center"></a-text>
+        <a-text id="opt4" value="" color="#00ffff" position="0 -0.5 0" align="center"></a-text>
+
+        <a-text id="timer" value="" color="#ffaa00" position="0 -1 0" align="center"></a-text>
+      </a-entity>
 
       <!-- 👁️ Camera -->
       <a-entity camera look-controls position="0 1.6 0"></a-entity>
     </a-scene>
 
     <script>
-      const ESP_IP = "http://172.20.10.2/data";
       const GEMINI_API_KEY = "AIzaSyDZ5D8HxWapV3dYQmn_4mvOwMIlRJUxwrI";
-      let aiSpeaking = false;
+      const WEATHER_API = "https://api.open-meteo.com/v1/forecast?latitude=13.0827&longitude=80.2707&current_weather=true&hourly=precipitation";
 
-      // 🧠 Fetch all data once
-      window.onload = async () => {
-        try {
-          const res = await fetch(ESP_IP);
-          const data = await res.json();
-
-          updateScene(data);
-          await fetchAI(data);
-        } catch (err) {
-          console.error("Error fetching ESP32 data:", err);
-          document.querySelector("#system-log").setAttribute("value", "⚠️ Unable to reach IoT device.");
+      const questions = [
+        {
+          q: "Water levels are rising and live wires are visible. What should you do?",
+          opts: ["Move to higher ground", "Touch the wires", "Wait in water", "Swim towards lines"],
+          ans: 0
+        },
+        {
+          q: "A person is stranded on a floating car. What’s your first action?",
+          opts: ["Mark location & call help", "Jump into water", "Throw rope", "Wait till car sinks"],
+          ans: 0
+        },
+        {
+          q: "Which is safest shelter during heavy floods?",
+          opts: ["Lowland", "Rooftop of tall building", "Open field", "River bank"],
+          ans: 1
+        },
+        {
+          q: "Before using a rescue boat, what’s crucial?",
+          opts: ["Check fuel", "Wear life jacket", "Play siren", "Wave hands"],
+          ans: 1
+        },
+        {
+          q: "If communication fails, what should you do?",
+          opts: ["Panic", "Use visual signals", "Wait silently", "Abandon rescue"],
+          ans: 1
         }
-      };
+      ];
 
-      // 🤖 AI Suggestion
-      async function fetchAI(data) {
+      async function fetchFloodData() {
         try {
-          const prompt = `You are ResQNet AI. Based on the sensor readings: 
-Distance=${data.distance_cm}cm, Temperature=${data.temp_c}°C, Humidity=${data.humidity_pct}%, and Air Quality=${data.air_quality_pct}%. 
-Provide a short, precise flood rescue instruction (max 2 sentences).`;
-          
-          const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + GEMINI_API_KEY, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-          });
+          const res = await fetch(WEATHER_API);
+          const data = await res.json();
+          const temp = data.current_weather?.temperature || 0;
+          const rain = data.hourly?.precipitation?.[0] || 0;
+          const humidity = 65 + Math.random() * 25;
+          const river = 2 + rain / 4;
+          const floodRisk = rain > 15 || river > 5;
 
-          const result = await res.json();
-          const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "No AI output.";
+          const info = { temp, rain, humidity, river, floodRisk };
+          updateScene(info);
+          await aiNarrate(info);
 
-          displayTextFlow("#ai-suggestion", aiText);
-          speak(aiText);
-
+          document.getElementById("loader").style.display = "none";
+          setTimeout(() => startQuiz(), 4000);
         } catch (err) {
-          console.error("AI fetch failed:", err);
+          console.warn("Error:", err);
         }
       }
 
-      // 🧱 Scene update
       function updateScene(data) {
-        document.querySelector("#distance").setAttribute("value", `📏 Distance: ${data.distance_cm.toFixed(1)} cm`);
-        document.querySelector("#temp").setAttribute("value", `🌡 Temp: ${data.temp_c.toFixed(1)} °C`);
-        document.querySelector("#humidity").setAttribute("value", `💧 Humidity: ${data.humidity_pct.toFixed(1)} %`);
-        document.querySelector("#air").setAttribute("value", `🌫 AQI: ${data.air_quality_pct.toFixed(1)} %`);
+        document.querySelector("#rain").setAttribute("value", `🌧 Rainfall: ${data.rain.toFixed(1)} mm`);
+        document.querySelector("#river").setAttribute("value", `🌊 River: ${data.river.toFixed(1)} m`);
+        document.querySelector("#temp").setAttribute("value", `🌡 Temp: ${data.temp.toFixed(1)} °C`);
+        document.querySelector("#humidity").setAttribute("value", `💧 Humidity: ${data.humidity.toFixed(1)} %`);
 
         const water = document.querySelector("#water");
-        const alertText = document.querySelector("#alert");
-        const sound = document.querySelector("#alertSound");
-        const sysLog = document.querySelector("#system-log");
-        const weatherBlock = document.querySelector("#weather-data");
+        const alert = document.querySelector("#alert");
 
-        if (data.flood_risk) {
-          water.setAttribute("color", "#0044ff");
-          alertText.setAttribute("value", "⚠️ FLOOD ALERT ⚠️");
-          sound.components.sound.playSound();
-          sysLog.setAttribute("value", "Flood detected — systems on alert.");
-          weatherBlock.setAttribute("value", "Heavy rainfall, high humidity.");
-          spawnRain();
+        if (data.floodRisk) {
+          water.setAttribute("color", "#004cff");
+          water.setAttribute("position", "0 0.4 0");
+          alert.setAttribute("value", "⚠️ FLOOD RISK DETECTED ⚠️");
         } else {
-          water.setAttribute("color", "#003366");
-          alertText.setAttribute("value", "");
-          sound.components.sound.stopSound();
-          sysLog.setAttribute("value", "Normal conditions.");
-          weatherBlock.setAttribute("value", "Clear or moderate weather.");
-          removeRain();
+          water.setAttribute("color", "#004488");
+          water.setAttribute("position", "0 0 0");
+          alert.setAttribute("value", "");
         }
       }
 
-      // ⛈️ Rain Effect
-      function spawnRain() {
-        if (document.querySelector("#rain")) return;
-        const rain = document.createElement("a-entity");
-        rain.setAttribute("id", "rain");
-        rain.setAttribute("particle-system", "preset: rain; color: #77ccff; particleCount: 1500");
-        document.querySelector("a-scene").appendChild(rain);
-      }
+      async function aiNarrate(data) {
+        const prompt = `
+        Flood data:
+        Rainfall: ${data.rain} mm,
+        River: ${data.river} m,
+        Humidity: ${data.humidity}%,
+        Temperature: ${data.temp}°C.
+        Give a short 2-line calm instruction for rescuers in flood zones.
+        `;
+        const response = await fetch(
+          "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + GEMINI_API_KEY,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+          }
+        );
 
-      function removeRain() {
-        const rain = document.querySelector("#rain");
-        if (rain) rain.remove();
-      }
+        const json = await response.json();
+        const text = json?.candidates?.[0]?.content?.parts?.[0]?.text ||
+          "Stay alert. Move to higher ground. Prioritize safety and communication.";
 
-      // 🗣 Text Flow Animation
-      function displayTextFlow(selector, text) {
-        const el = document.querySelector(selector);
-        el.setAttribute("value", "");
-        let i = 0;
-        const interval = setInterval(() => {
-          if (i < text.length) {
-            el.setAttribute("value", text.substring(0, i + 1));
-            i++;
-          } else clearInterval(interval);
-        }, 35);
-      }
+        const aiText = document.createElement("a-text");
+        aiText.setAttribute("value", `🤖 ${text}`);
+        aiText.setAttribute("color", "#00ffff");
+        aiText.setAttribute("position", "0 0.5 -2.5");
+        aiText.setAttribute("align", "center");
+        aiText.setAttribute("scale", "1.2 1.2 1.2");
+        document.querySelector("a-scene").appendChild(aiText);
 
-      // 🔊 Speak once, in sync with display
-      function speak(text) {
-        if (aiSpeaking) return;
-        aiSpeaking = true;
-        const synth = window.speechSynthesis;
-        synth.cancel(); // stop old voices
         const utter = new SpeechSynthesisUtterance(text);
-        utter.lang = "en-US";
-        utter.pitch = 1;
-        utter.rate = 0.95;
-        utter.volume = 1;
-        utter.onend = () => { aiSpeaking = false; };
-        synth.speak(utter);
+        utter.rate = 1; utter.pitch = 1; utter.volume = 1;
+        speechSynthesis.speak(utter);
       }
+
+      // 🧩 Interactive Quiz
+      let currentQ = 0;
+      let timer;
+
+      function startQuiz() {
+        const panel = document.getElementById("quiz-panel");
+        panel.setAttribute("visible", "true");
+        animatePanel(panel);
+        showQuestion(currentQ);
+      }
+
+      function animatePanel(panel) {
+        panel.setAttribute("animation", {
+          property: "scale",
+          from: "0.5 0.5 0.5",
+          to: "1 1 1",
+          dur: 800,
+          easing: "easeOutElastic"
+        });
+      }
+
+      function showQuestion(i) {
+        const q = questions[i];
+        document.getElementById("question").setAttribute("value", q.q);
+        q.opts.forEach((opt, idx) => {
+          const el = document.getElementById(`opt${idx + 1}`);
+          el.setAttribute("value", `${idx + 1}. ${opt}`);
+          el.setAttribute("color", "#00ffff");
+        });
+
+        let timeLeft = 10;
+        document.getElementById("timer").setAttribute("value", `⏳ ${timeLeft}s`);
+        clearInterval(timer);
+        timer = setInterval(() => {
+          timeLeft--;
+          document.getElementById("timer").setAttribute("value", `⏳ ${timeLeft}s`);
+          if (timeLeft === 0) {
+            clearInterval(timer);
+            showAnswer(i);
+          }
+        }, 1000);
+      }
+
+      function showAnswer(i) {
+        const correct = questions[i].ans + 1;
+        const correctEl = document.getElementById(`opt${correct}`);
+        correctEl.setAttribute("color", "#00ff00");
+
+        const timerText = document.getElementById("timer");
+        timerText.setAttribute("value", "✅ Correct: " + questions[i].opts[questions[i].ans]);
+
+        setTimeout(() => {
+          nextQuestion();
+        }, 4000); // Pause before next question
+      }
+
+      function nextQuestion() {
+        currentQ++;
+        if (currentQ < questions.length) {
+          animatePanel(document.getElementById("quiz-panel"));
+          showQuestion(currentQ);
+        } else {
+          document.getElementById("quiz-panel").setAttribute("visible", "false");
+          const done = document.createElement("a-text");
+          done.setAttribute("value", "🎉 Training Complete! Excellent Work Rescuer!");
+          done.setAttribute("color", "#00ffcc");
+          done.setAttribute("position", "0 2 -2");
+          done.setAttribute("align", "center");
+          done.setAttribute("scale", "1.5 1.5 1.5");
+          document.querySelector("a-scene").appendChild(done);
+          const utter = new SpeechSynthesisUtterance("Training complete! Excellent work, Rescuer!");
+          speechSynthesis.speak(utter);
+        }
+      }
+
+      window.onload = fetchFloodData;
     </script>
   </body>
 </html>
