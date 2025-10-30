@@ -36,6 +36,7 @@
     <script type="module">
       import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.156.1/build/three.module.js';
       import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.156.1/examples/jsm/webxr/VRButton.js';
+      import { XRControllerModelFactory } from 'https://cdn.jsdelivr.net/npm/three@0.156.1/examples/jsm/webxr/XRControllerModelFactory.js';
 
       // === SCENE SETUP ===
       const scene = new THREE.Scene();
@@ -155,17 +156,51 @@
       createButton("🚁 Evacuate", 0xff4444, 0.8, startEvacuation);
       createButton("🔄 Reset", 0x00ff77, -0.4, resetSim);
 
-      // === INTERACTION ===
-      const raycaster = new THREE.Raycaster();
-      const pointer = new THREE.Vector2();
-      function onClick(e) {
-        pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
-        pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
-        raycaster.setFromCamera(pointer, camera);
-        const hits = raycaster.intersectObjects(buttons);
-        if (hits.length > 0) hits[0].object.userData.action();
+      // === VR CONTROLLERS ===
+      const controller1 = renderer.xr.getController(0);
+      const controller2 = renderer.xr.getController(1);
+      scene.add(controller1);
+      scene.add(controller2);
+
+      function makeRay(color = 0x00ffff) {
+        const geometry = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(0, 0, 0),
+          new THREE.Vector3(0, 0, -1)
+        ]);
+        const material = new THREE.LineBasicMaterial({ color });
+        return new THREE.Line(geometry, material);
       }
-      window.addEventListener('click', onClick);
+
+      controller1.add(makeRay());
+      controller2.add(makeRay());
+
+      const controllerModelFactory = new XRControllerModelFactory();
+      const grip1 = renderer.xr.getControllerGrip(0);
+      grip1.add(controllerModelFactory.createControllerModel(grip1));
+      scene.add(grip1);
+
+      const grip2 = renderer.xr.getControllerGrip(1);
+      grip2.add(controllerModelFactory.createControllerModel(grip2));
+      scene.add(grip2);
+
+      function onSelectStart(event) {
+        const controller = event.target;
+        const tempMatrix = new THREE.Matrix4();
+        tempMatrix.identity().extractRotation(controller.matrixWorld);
+
+        const raycaster = new THREE.Raycaster();
+        raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+        raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+
+        const intersects = raycaster.intersectObjects(buttons);
+        if (intersects.length > 0) {
+          const hit = intersects[0].object;
+          hit.userData.action();
+        }
+      }
+
+      controller1.addEventListener('selectstart', onSelectStart);
+      controller2.addEventListener('selectstart', onSelectStart);
 
       // === SENSOR SIMULATION ===
       function simulateSensors() {
