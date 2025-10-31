@@ -254,7 +254,7 @@ const OPENWEATHER_API_KEY = '3df936a54898ee6b5298b19443c413b0';
         async function fetchTrainingScenario(envData) {
             const genAI = new window.GoogleGenerativeAI(GEMINI_API_KEY);
             const model = genAI.getGenerativeModel({ 
-                model: "gemini-1.5-flash"
+                model: "gemini-2.5-flash"
                 // Removed `responseMimeType` as it wasn't reliable
             });
 
