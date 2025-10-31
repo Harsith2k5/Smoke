@@ -1,228 +1,419 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>FloodResQ VR • Zyntra’s ResQNet</title>
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Automated Rescuer Training (VR)</title>
+
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+
+    <script type="module">
+        import { GoogleGenerativeAI } from 'https://esm.run/@google/generative-ai';
+        // Make the SDK available globally for the main script
+        window.GoogleGenerativeAI = GoogleGenerativeAI;
+    </script>
+
     <style>
-      body { margin: 0; overflow: hidden; background: #000; }
-      .a-enter-vr-button {
-        background: linear-gradient(90deg, #00eaff, #00ffaa) !important;
-        color: #000 !important;
-        border-radius: 14px !important;
-        font-weight: bold !important;
-        font-size: 16px !important;
-        box-shadow: 0 0 10px #00ffff;
-      }
-      #loader {
-        position: absolute;
-        top: 50%; left: 50%;
-        transform: translate(-50%, -50%);
-        color: #00ffff;
-        font-size: 22px;
-        text-shadow: 0 0 10px #00eaff;
-      }
+        body {
+            margin: 0;
+            overflow: hidden; /* Hide scrollbars */
+        }
+        .a-canvas {
+            position: fixed !important;
+            top: 0;
+            left: 0;
+            z-index: -1; /* Place it behind the UI */
+        }
+
+        /* UI Overlay Container */
+        #ui-overlay {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90vw;
+            max-width: 700px;
+            height: auto; /* Auto-height for quiz */
+            max-height: 90vh;
+            
+            background-color: rgba(10, 20, 35, 0.9);
+            backdrop-filter: blur(15px) saturate(180%);
+            -webkit-backdrop-filter: blur(15px) saturate(180%);
+
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #f0f0f0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            transition: opacity 0.5s ease;
+        }
+        
+        /* Header & Data */
+        header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+        header h1 {
+            margin: 0 0 10px 0;
+            font-size: 1.5rem;
+            color: #ffffff;
+            font-weight: 600;
+        }
+        #data-container {
+            display: flex;
+            justify-content: space-around;
+            padding: 15px 0 10px 0;
+            gap: 10px;
+        }
+        .data-point { text-align: center; }
+        .data-point .label {
+            font-size: 0.8rem;
+            color: #89a;
+            text-transform: uppercase;
+        }
+        .data-point .value {
+            font-size: 1.5rem;
+            color: #fff;
+            font-weight: 500;
+        }
+        .data-point .value.aqi-good { color: #4CAF50; }
+        .data-point .value.aqi-moderate { color: #FFEB3B; }
+        .data-point .value.aqi-unhealthy { color: #FF9800; }
+        .data-point .value.aqi-very-unhealthy { color: #f44336; }
+        .data-point .value.aqi-hazardous { color: #9C27B0; }
+
+        /* Quiz Section */
+        #quiz-container {
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-height: 300px;
+        }
+        #question-text {
+            font-size: 1.25rem;
+            font-weight: 500;
+            line-height: 1.5;
+            color: #fff;
+        }
+        #options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .option {
+            padding: 15px 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.2);
+            color: #f0f0f0;
+            font-size: 1rem;
+            text-align: left;
+            cursor: not-allowed;
+            transition: all 0.3s ease;
+        }
+        .option.correct {
+            background: #27ae60;
+            border-color: #2ecc71;
+            color: #fff;
+            font-weight: 600;
+            box-shadow: 0 0 15px rgba(46, 204, 113, 0.5);
+        }
+
+        /* Explanation & Status */
+        #explanation-container {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+            display: none; /* Hidden by default */
+            border-left: 4px solid #3498db;
+        }
+        #explanation-text {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: #ecf0f1;
+        }
+        #status-display {
+            font-size: 1rem;
+            color: #9ab;
+            text-align: center;
+            padding: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
     </style>
-  </head>
+</head>
+<body>
 
-  <body>
-    <div id="loader">🌊 Initializing Zyntra’s ResQNet...</div>
+    <a-scene dom-overlay="overlay: #ui-overlay">
+        <a-sky 
+            src="https://upload.wikimedia.org/wikipedia/commons/e/e9/Misty_Blue_Hour_in_Manhattan_-_Equirectangular_tiny_planet.jpg"
+            rotation="0 -90 0">
+        </a-sky>
 
-    <a-scene>
-      <a-sky color="#001a33"></a-sky>
-
-      <!-- 🌊 Flood Water -->
-      <a-plane id="water" color="#004488" width="100" height="100"
-               rotation="-90 0 0" position="0 0 0">
-        <a-animation attribute="position" direction="alternate" dur="4000"
-                     repeat="indefinite" to="0 0.3 0"></a-animation>
-      </a-plane>
-
-      <!-- 👁️ Camera rig with fixed UI (so it stays visible in VR) -->
-      <a-entity id="rig" position="0 1.6 0">
-        <a-entity id="camera" camera look-controls wasd-controls="enabled: false"></a-entity>
-
-        <!-- 🎛️ HUD UI (attached to camera rig) -->
-        <a-entity id="ui" position="0 0 -3.5" scale="1.2 1.2 1.2">
-          <!-- 📊 Sensor Panel -->
-          <a-entity id="data-panel" position="0 1 0">
-            <a-plane color="#002244" width="3.8" height="2" opacity="0.8"></a-plane>
-            <a-text id="rain" value="🌧 Rainfall: -- mm" color="#00eaff" position="-1.5 0.6 0" align="left"></a-text>
-            <a-text id="river" value="🌊 River: -- m" color="#00ffaa" position="-1.5 0.2 0" align="left"></a-text>
-            <a-text id="temp" value="🌡 Temp: -- °C" color="#ffaa00" position="-1.5 -0.2 0" align="left"></a-text>
-            <a-text id="humidity" value="💧 Humidity: -- %" color="#66ff66" position="-1.5 -0.6 0" align="left"></a-text>
-          </a-entity>
-
-          <!-- 🚨 Alert -->
-          <a-text id="alert" value="" color="#ff4444" position="0 2.4 0" align="center" scale="2 2 2"></a-text>
-
-          <!-- 🧠 Quiz Panel -->
-          <a-entity id="quiz-panel" position="0 -1.2 0" visible="false">
-            <a-plane id="quiz-bg" color="#002244" width="4" height="2.5" opacity="0.85"></a-plane>
-            <a-text id="question" value="" color="#ffffff" position="0 0.8 0" align="center" width="3.5"></a-text>
-
-            <a-text id="opt1" value="" color="#00ffff" position="0 0.4 0" align="center"></a-text>
-            <a-text id="opt2" value="" color="#00ffff" position="0 0.1 0" align="center"></a-text>
-            <a-text id="opt3" value="" color="#00ffff" position="0 -0.2 0" align="center"></a-text>
-            <a-text id="opt4" value="" color="#00ffff" position="0 -0.5 0" align="center"></a-text>
-            <a-text id="timer" value="" color="#ffaa00" position="0 -1 0" align="center"></a-text>
-          </a-entity>
-        </a-entity>
-      </a-entity>
+        <a-camera>
+            <a-cursor></a-cursor>
+        </a-camera>
     </a-scene>
 
+    <div id="ui-overlay">
+        <header>
+            <h1>Automated Rescuer Training</h1>
+            <section id="data-container">
+                <div class="data-point">
+                    <div class="label">Temperature</div>
+                    <div class="value" id="temp-value">--°C</div>
+                </div>
+                <div class="data-point">
+                    <div class="label">Humidity</div>
+                    <div class="value" id="humidity-value">--%</div>
+                </div>
+                <div class="data-point">
+                    <div class="label">Air Quality (AQI)</div>
+                    <div class="value" id="aqi-value">--</div>
+                </div>
+            </section>
+        </header>
+
+        <main id="quiz-container">
+            <div id="question-text">Loading scenario...</div>
+            <div id="options-container">
+                </div>
+            <div id="explanation-container">
+                <div id="explanation-text"></div>
+            </div>
+        </main>
+
+        <footer>
+            <div id="status-display">Initializing...</div>
+        </footer>
+    </div>
+
+
     <script>
-      const GEMINI_API_KEY = "AIzaSyDZ5D8HxWapV3dYQmn_4mvOwMIlRJUxwrI";
-      const WEATHER_API = "https://api.open-meteo.com/v1/forecast?latitude=13.0827&longitude=80.2707&current_weather=true&hourly=precipitation";
+        // --- !!! CRITICAL: REPLACE WITH YOUR NEW KEYS !!! ---
+ const WAQI_API_KEY = 'bfbe96543798d68735072c7b7ecce86c5190dff9';
+const OPENWEATHER_API_KEY = '3df936a54898ee6b5298b19443c413b0';
+        const GEMINI_API_KEY = 'AIzaSyDZ5D8HxWapV3dYQmn_4mvOwMIlRJUxwrI';
+        // --- !!! ---
 
-      const questions = [
-        { q: "Water levels are rising and live wires are visible. What should you do?", opts: ["Move to higher ground", "Touch the wires", "Wait in water", "Swim towards lines"], ans: 0 },
-        { q: "A person is stranded on a floating car. What’s your first action?", opts: ["Mark location & call help", "Jump into water", "Throw rope", "Wait till car sinks"], ans: 0 },
-        { q: "Which is safest shelter during heavy floods?", opts: ["Lowland", "Rooftop of tall building", "Open field", "River bank"], ans: 1 },
-        { q: "Before using a rescue boat, what’s crucial?", opts: ["Check fuel", "Wear life jacket", "Play siren", "Wave hands"], ans: 1 },
-        { q: "If communication fails, what should you do?", opts: ["Panic", "Use visual signals", "Wait silently", "Abandon rescue"], ans: 1 }
-      ];
+        // UI Elements
+        const statusDisplay = document.getElementById('status-display');
+        const tempValue = document.getElementById('temp-value');
+        const humidityValue = document.getElementById('humidity-value');
+        const aqiValue = document.getElementById('aqi-value');
+        const questionText = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const explanationContainer = document.getElementById('explanation-container');
+        const explanationText = document.getElementById('explanation-text');
 
-      async function fetchFloodData() {
-        try {
-          const res = await fetch(WEATHER_API);
-          const data = await res.json();
-          const temp = data.current_weather?.temperature || 0;
-          const rain = data.hourly?.precipitation?.[0] || 0;
-          const humidity = 65 + Math.random() * 25;
-          const river = 2 + rain / 4;
-          const floodRisk = rain > 15 || river > 5;
+        // Quiz settings
+        const TIME_PER_QUESTION = 10; // 10 seconds
+        const TIME_FOR_EXPLANATION = 6; // 6 seconds
 
-          const info = { temp, rain, humidity, river, floodRisk };
-          updateScene(info);
-          await aiNarrate(info);
-
-          document.getElementById("loader").style.display = "none";
-          setTimeout(() => startQuiz(), 4000);
-        } catch (err) {
-          console.warn("Error:", err);
-        }
-      }
-
-      function updateScene(data) {
-        document.querySelector("#rain").setAttribute("value", `🌧 Rainfall: ${data.rain.toFixed(1)} mm`);
-        document.querySelector("#river").setAttribute("value", `🌊 River: ${data.river.toFixed(1)} m`);
-        document.querySelector("#temp").setAttribute("value", `🌡 Temp: ${data.temp.toFixed(1)} °C`);
-        document.querySelector("#humidity").setAttribute("value", `💧 Humidity: ${data.humidity.toFixed(1)} %`);
-
-        const water = document.querySelector("#water");
-        const alert = document.querySelector("#alert");
-
-        if (data.floodRisk) {
-          water.setAttribute("color", "#004cff");
-          water.setAttribute("position", "0 0.4 0");
-          alert.setAttribute("value", "⚠️ FLOOD RISK DETECTED ⚠️");
-        } else {
-          water.setAttribute("color", "#004488");
-          water.setAttribute("position", "0 0 0");
-          alert.setAttribute("value", "");
-        }
-      }
-
-      async function aiNarrate(data) {
-        const prompt = `Flood data:
-        Rainfall: ${data.rain} mm,
-        River: ${data.river} m,
-        Humidity: ${data.humidity}%,
-        Temperature: ${data.temp}°C.
-        Give a short 2-line calm instruction for rescuers in flood zones.`;
-
-        const res = await fetch(
-          "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + GEMINI_API_KEY,
-          { method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
-        );
-
-        const j = await res.json();
-        const text = j?.candidates?.[0]?.content?.parts?.[0]?.text ||
-          "Stay alert. Move to higher ground. Prioritize safety.";
-
-        const aiText = document.createElement("a-text");
-        aiText.setAttribute("value", `🤖 ${text}`);
-        aiText.setAttribute("color", "#00ffff");
-        aiText.setAttribute("position", "0 0 -2");
-        aiText.setAttribute("align", "center");
-        aiText.setAttribute("scale", "1.2 1.2 1.2");
-        document.getElementById("ui").appendChild(aiText);
-
-        const utter = new SpeechSynthesisUtterance(text);
-        speechSynthesis.speak(utter);
-      }
-
-      // 🧩 Quiz
-      let currentQ = 0;
-      let timer;
-
-      function startQuiz() {
-        const panel = document.getElementById("quiz-panel");
-        panel.setAttribute("visible", "true");
-        animatePanel(panel);
-        showQuestion(currentQ);
-      }
-
-      function animatePanel(panel) {
-        panel.setAttribute("animation", {
-          property: "scale",
-          from: "0.5 0.5 0.5",
-          to: "1 1 1",
-          dur: 800,
-          easing: "easeOutElastic"
-        });
-      }
-
-      function showQuestion(i) {
-        const q = questions[i];
-        document.getElementById("question").setAttribute("value", q.q);
-        q.opts.forEach((opt, idx) => {
-          const el = document.getElementById(`opt${idx + 1}`);
-          el.setAttribute("value", `${idx + 1}. ${opt}`);
-          el.setAttribute("color", "#00ffff");
+        // Wait for the DOM and Gemini SDK to be ready
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.GoogleGenerativeAI) {
+                main();
+            } else {
+                const interval = setInterval(() => {
+                    if (window.GoogleGenerativeAI) {
+                        clearInterval(interval);
+                        main();
+                    }
+                }, 100);
+            }
         });
 
-        let t = 10;
-        document.getElementById("timer").setAttribute("value", `⏳ ${t}s`);
-        clearInterval(timer);
-        timer = setInterval(() => {
-          t--;
-          document.getElementById("timer").setAttribute("value", `⏳ ${t}s`);
-          if (t === 0) {
-            clearInterval(timer);
-            showAnswer(i);
-          }
-        }, 1000);
-      }
+        async function main() {
+            try {
+                if (GEMINI_API_KEY.includes('YOUR_NEW')) {
+                    updateStatus('ERROR: API keys not set. Please edit the HTML.', true);
+                    return;
+                }
 
-      function showAnswer(i) {
-        const correct = questions[i].ans + 1;
-        document.getElementById(`opt${correct}`).setAttribute("color", "#00ff00");
-        document.getElementById("timer").setAttribute("value", "✅ Correct: " + questions[i].opts[questions[i].ans]);
-        setTimeout(() => nextQuestion(), 4000);
-      }
+                updateStatus('Requesting location access...');
+                const position = await getLocation();
+                const { latitude, longitude } = position.coords;
+                updateStatus('Fetching environmental data...');
 
-      function nextQuestion() {
-        currentQ++;
-        if (currentQ < questions.length) {
-          animatePanel(document.getElementById("quiz-panel"));
-          showQuestion(currentQ);
-        } else {
-          document.getElementById("quiz-panel").setAttribute("visible", "false");
-          const done = document.createElement("a-text");
-          done.setAttribute("value", "🎉 Training Complete! Excellent Work Rescuer!");
-          done.setAttribute("color", "#00ffcc");
-          done.setAttribute("position", "0 1 0");
-          done.setAttribute("align", "center");
-          done.setAttribute("scale", "1.5 1.5 1.5");
-          document.getElementById("ui").appendChild(done);
-          speechSynthesis.speak(new SpeechSynthesisUtterance("Training complete! Excellent work, Rescuer!"));
+                const envData = await fetchEnvironmentalData(latitude, longitude);
+                
+                updateStatus('Data acquired. Building training scenario...');
+                displayEnvironmentalData(envData);
+                
+                const questions = await fetchTrainingScenario(envData);
+                await startQuiz(questions);
+
+            } catch (error) {
+                console.error('Initialization failed:', error);
+                updateStatus(`Error: ${error.message}`, true);
+                questionText.textContent = 'Failed to load training scenario.';
+            }
         }
-      }
 
-      window.onload = fetchFloodData;
+        // --- Step 1: Get Location (Same as before) ---
+        function getLocation() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject(new Error('Geolocation is not supported.'));
+                }
+                if (window.location.protocol !== 'https:') {
+                    reject(new Error('Geolocation requires HTTPS.'));
+                }
+                navigator.geolocation.getCurrentPosition(resolve, reject);
+            });
+        }
+
+        // --- Step 2: Fetch Weather & Pollution Data (Same as before) ---
+        async function fetchEnvironmentalData(lat, lon) {
+            const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${OPENWEATHER_API_KEY}&units=metric`;
+            const aqiUrl = `https://api.waqi.info/feed/geo:${lat};${lon}/?token=${WAQI_API_KEY}`;
+
+            const [weatherResponse, aqiResponse] = await Promise.all([
+                fetch(weatherUrl),
+                fetch(aqiUrl)
+            ]);
+
+            if (!weatherResponse.ok) throw new Error('Failed to fetch weather.');
+            if (!aqiResponse.ok) throw new Error('Failed to fetch AQI.');
+
+            const weatherData = await weatherResponse.json();
+            const aqiData = await aqiResponse.json();
+
+            if (aqiData.status !== 'ok') throw new Error(`AQI API Error: ${aqiData.data}`);
+
+            return {
+                temperature: weatherData.main.temp,
+                humidity: weatherData.main.humidity,
+                conditions: weatherData.weather[0].description,
+                aqi: aqiData.data.aqi
+            };
+        }
+
+        // --- Step 3: Update UI with Data (Same as before) ---
+        function displayEnvironmentalData(data) {
+            tempValue.textContent = `${Math.round(data.temperature)}°C`;
+            humidityValue.textContent = `${data.humidity}%`;
+            aqiValue.textContent = data.aqi;
+
+            let aqiClass = 'aqi-good';
+            if (data.aqi > 300) aqiClass = 'aqi-hazardous';
+            else if (data.aqi > 200) aqiClass = 'aqi-very-unhealthy';
+            else if (data.aqi > 150) aqiClass = 'aqi-unhealthy';
+            else if (data.aqi > 50) aqiClass = 'aqi-moderate';
+            aqiValue.className = `value ${aqiClass}`;
+        }
+
+        // --- Step 4: Fetch Quiz from Gemini ---
+        async function fetchTrainingScenario(envData) {
+            const genAI = new window.GoogleGenerativeAI(GEMINI_API_KEY);
+            const model = genAI.getGenerativeModel({ 
+                model: "gemini-1.5-flash",
+                // This forces Gemini to output JSON
+                responseMimeType: "application/json", 
+            });
+
+            const systemPrompt = `
+                You are an emergency response trainer. Based on the provided environmental data, 
+                generate a training scenario as a JSON array of 5 multiple-choice questions.
+                
+                For each question, provide:
+                1. "question": The question text.
+                2. "options": An array of 3-4 string options.
+                3. "correctOptionIndex": The 0-based index of the correct option.
+                4. "explanation": A brief explanation for why that answer is correct.
+
+                Respond *only* with the valid JSON array.
+            `;
+            
+            const dataPrompt = `
+                Environmental Data:
+                - Temperature: ${envData.temperature}°C
+                - Humidity: ${envData.humidity}%
+                - Conditions: ${envData.conditions}
+                - Air Quality Index (AQI): ${envData.aqi}
+            `;
+
+            // Using generateContent directly for a single, structured response
+            const result = await model.generateContent([systemPrompt, dataPrompt]);
+            const responseText = result.response.text();
+            
+            // Parse the JSON text into a JavaScript object
+            const questions = JSON.parse(responseText);
+            return questions;
+        }
+
+        // --- Step 5: Run the Automated Quiz ---
+        
+        // Helper function for delays
+        const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+        async function startQuiz(questions) {
+            for (let i = 0; i < questions.length; i++) {
+                const q = questions[i];
+                displayQuestion(q, i + 1);
+
+                // Start the 10-second timer
+                let countdown = TIME_PER_QUESTION;
+                const timerInterval = setInterval(() => {
+                    updateStatus(`Revealing answer in ${countdown}s...`);
+                    countdown--;
+                }, 1000);
+
+                await sleep(TIME_PER_QUESTION * 1000); // Wait 10 seconds
+                clearInterval(timerInterval);
+
+                // Show the answer
+                showAnswer(q);
+                updateStatus('Reading explanation...');
+                
+                await sleep(TIME_FOR_EXPLANATION * 1000); // Wait 6 seconds
+            }
+
+            // Quiz complete
+            questionText.textContent = "Training Scenario Complete";
+            optionsContainer.innerHTML = "";
+            explanationContainer.style.display = 'none';
+            updateStatus('Simulation finished.');
+        }
+
+        function displayQuestion(q, index) {
+            // Reset UI
+            explanationContainer.style.display = 'none';
+            optionsContainer.innerHTML = '';
+            
+            questionText.textContent = `Q${index}: ${q.question}`;
+            
+            q.options.forEach((optionText, i) => {
+                const optionButton = document.createElement('button');
+                optionButton.classList.add('option');
+                optionButton.textContent = `${String.fromCharCode(65 + i)}. ${optionText}`; // A, B, C...
+                optionsContainer.appendChild(optionButton);
+            });
+        }
+
+        function showAnswer(q) {
+            // Highlight the correct answer
+            const correctButton = optionsContainer.children[q.correctOptionIndex];
+            if (correctButton) {
+                correctButton.classList.add('correct');
+            }
+
+            // Show explanation
+            explanationText.textContent = q.explanation;
+            explanationContainer.style.display = 'block';
+        }
+
+        function updateStatus(message, isError = false) {
+            statusDisplay.textContent = message;
+            statusDisplay.style.color = isError ? '#f44336' : '#9ab';
+        }
+
     </script>
-  </body>
+</body>
 </html>
